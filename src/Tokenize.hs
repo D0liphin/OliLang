@@ -104,7 +104,7 @@ parseComment (i, t)
 
 tokenizers =
   [
-    parseKeyword "mod" Module,
+    parseKeyword "mdl" Module,
     parseKeyword "ext" Extern,
     parseKeyword "cls" Class,
     parseKeyword "new" New,
