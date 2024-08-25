@@ -1,12 +1,12 @@
-cabal-version:      3.4
-name:               src
+cabal-version:      3.0
+name:               OliLang
 version:            0.1.0.0
 -- synopsis:
 -- description:
 license:            MIT
 license-file:       LICENSE
 author:             Oli Iliffe
-maintainer:         oliver.iliffe@gmail.com
+maintainer:         oli.iliffe@gmail.com
 -- copyright:
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
@@ -15,10 +15,10 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
-executable src
+executable OliLang
     import:           warnings
     main-is:          Main.hs
-    -- other-modules:    
+    -- other-modules:
     -- other-extensions:
     build-depends:    base ^>=4.17.2.1, text
     hs-source-dirs:   app

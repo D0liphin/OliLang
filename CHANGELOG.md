@@ -1,4 +1,4 @@
-# Revision history for src
+# Revision history for OliLang
 
 ## 0.1.0.0 -- YYYY-mm-dd
 
