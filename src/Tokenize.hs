@@ -1,6 +1,6 @@
 module Tokenize (tokenize, Token, Tok, TokenizeError (..)) where
 
-import Data.Char (isAlpha, isAlphaNum)
+import Data.Char (isAlpha, isAlphaNum, isNumber)
 import Data.Text qualified as T
 import Parse
 
@@ -10,11 +10,17 @@ type Tokenizer a = Parser TokenizeError IText a
 
 newtype TokenizeError = TokenizeError Int
 
+data Literal
+  = IntLiteral T.Text
+  | FloatLiteral T.Text
+  deriving (Show)
+
 data Tok
   = LBrace
   | Module
   | Extern
   | New
+  | Nil
   | Float
   | Int
   | Class
@@ -44,6 +50,7 @@ data Tok
   | Colon
   | Newline
   | Ident T.Text
+  | Lit Literal
   | Comment
   deriving (Show)
 
@@ -59,7 +66,8 @@ nonNull (i, t)
   | otherwise = Ok ((i, t), ())
 
 instance Show Token where
-  show (Token index len tok) = show tok ++ " [" ++ show index ++ ":" ++ show (index + len - 1) ++ "]"
+  show (Token index len tok) =
+    show tok ++ " [" ++ show index ++ ":" ++ show (index + len - 1) ++ "]"
 
 token tok len index = Token {tok, len, index}
 
@@ -94,6 +102,29 @@ parseIdent (i, t)
        in Ok ((i + len, t'), token (Ident ident) len i)
   | otherwise = Err (TokenizeError i)
 
+parseIntText :: Tokenizer T.Text
+parseIntText (i, t)
+  | T.null n = Err (TokenizeError i)
+  | otherwise = Ok ((T.length n, t'), n)
+  where
+    (n, t') = T.span isNumber t
+
+wrap i h t f = Ok (t, Token {index = i, len = T.length h, tok = Lit (f h)})
+
+parseInt :: Tokenizer Token
+parseInt t@(i, _) = do
+  (t', h) <- parseIntText t
+  wrap i h t' IntLiteral
+
+parseFloat :: Tokenizer Token
+parseFloat t@(i, _) = do
+  (t', fl :> fr) <-
+    (parseIntText `pair` (parseKeyword "." Whitespace `discard` parseIntText)) t
+  wrap i (fl <> T.pack "." <> fr) t' FloatLiteral
+
+-- parseLiteral :: Tokenizer Token
+-- parseLiteral = Lit . alt [parseFloat, parseInt]
+
 parseComment :: Tokenizer Token
 parseComment (i, t)
   | T.pack "--" `T.isPrefixOf` t =
@@ -103,22 +134,25 @@ parseComment (i, t)
   | otherwise = Err (TokenizeError i)
 
 tokenizers =
-  [
-    parseKeyword "mdl" Module,
-    parseKeyword "ext" Extern,
-    parseKeyword "cls" Class,
+  [ parseWhitespace,
+    parseComment,
+    parseKeyword "module" Module,
+    parseKeyword "extern" Extern,
+    parseKeyword "class" Class,
     parseKeyword "new" New,
-    parseKeyword "flt" Float,
-    parseKeyword "dat" Data,
-    parseKeyword "int" Int,
+    parseKeyword "data" Data,
+    parseKeyword "nil" Nil,
+    parseIdent,
+    parseFloat,
+    parseInt,
     parseKeyword "::" DblColon,
     parseKeyword "=>" DblArrow,
     parseKeyword "->" RightArrow,
     parseKeyword "<=" Leq,
     parseKeyword ">=" Geq,
+    parseKeyword "==" DblEquals,
     parseKeyword "<" Lt,
     parseKeyword ">" Gt,
-    parseKeyword "==" DblEquals,
     parseKeyword "{" LBrace,
     parseKeyword "}" RBrace,
     parseKeyword "(" LParen,
@@ -133,10 +167,7 @@ tokenizers =
     parseKeyword "+" Plus,
     parseKeyword "-" Minus,
     parseKeyword "/" FSlash,
-    parseKeyword "|" Pipe,
-    parseIdent,
-    parseWhitespace,
-    parseComment
+    parseKeyword "|" Pipe
   ]
 
 tokenize t =
